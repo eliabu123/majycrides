@@ -1,13 +1,11 @@
 
 "use strict";
 
-const CACHE_NAME = "majycrides-pro-v3";
+const CACHE_NAME = "majycrides-pro-v4";
 
 const APP_FILES = [
     "./",
     "./index.html",
-    "./style.css",
-    "./app.js",
     "./manifest.json"
 ];
 
@@ -35,7 +33,6 @@ self.addEventListener("activate", event => {
 });
 
 self.addEventListener("fetch", event => {
-
     const request = event.request;
 
     if (request.method !== "GET") return;
@@ -48,17 +45,18 @@ self.addEventListener("fetch", event => {
         event.respondWith(
             fetch(request)
                 .then(response => {
-                    const copy = response.clone();
+                    if (response.ok) {
+                        const copy = response.clone();
 
-                    caches.open(CACHE_NAME).then(cache => {
-                        cache.put("./index.html", copy);
-                    });
+                        caches.open(CACHE_NAME)
+                            .then(cache =>
+                                cache.put("./index.html", copy)
+                            );
+                    }
 
                     return response;
                 })
-                .catch(async () => {
-                    return await caches.match("./index.html");
-                })
+                .catch(() => caches.match("./index.html"))
         );
 
         return;
@@ -68,17 +66,7 @@ self.addEventListener("fetch", event => {
         caches.match(request).then(cached => {
             if (cached) return cached;
 
-            return fetch(request).then(response => {
-                if (response.ok) {
-                    const copy = response.clone();
-
-                    caches.open(CACHE_NAME).then(cache => {
-                        cache.put(request, copy);
-                    });
-                }
-
-                return response;
-            });
+            return fetch(request);
         })
     );
 });

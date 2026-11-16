@@ -1,0 +1,185 @@
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    background: #080d18;
+    color: #ffffff;
+    font-family: Arial, sans-serif;
+}
+
+#app {
+    width: 100%;
+    max-width: 1100px;
+    margin: auto;
+    padding: 15px;
+}
+
+.header {
+    text-align: center;
+    padding: 25px 10px;
+    background: #121e30;
+    border: 1px solid #263952;
+    border-radius: 16px;
+    margin-bottom: 20px;
+}
+
+.header h1 {
+    color: #00d4ff;
+    font-size: 30px;
+    margin-bottom: 10px;
+}
+
+.header p {
+    color: #aab7cc;
+    margin-top: 6px;
+    font-size: 14px;
+}
+
+.dashboard {
+    width: 100%;
+}
+
+.speed-card {
+    background: linear-gradient(135deg, #102d48, #121e30);
+    border: 1px solid #00a9d4;
+    border-radius: 18px;
+    padding: 30px 15px;
+    text-align: center;
+    margin-bottom: 20px;
+}
+
+.speed-card > p:first-child {
+    color: #00d4ff;
+    font-weight: bold;
+    letter-spacing: 2px;
+}
+
+.speed-display {
+    margin: 15px 0;
+}
+
+.speed-display span {
+    font-size: 75px;
+    font-weight: bold;
+    color: #ffffff;
+}
+
+.speed-display small {
+    color: #00d4ff;
+    font-size: 20px;
+}
+
+#gps-status {
+    color: #aab7cc;
+    font-size: 14px;
+}
+
+.stats {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 12px;
+    margin-bottom: 20px;
+}
+
+.stat-card {
+    background: #121e30;
+    border: 1px solid #263952;
+    border-radius: 14px;
+    padding: 20px 12px;
+    text-align: center;
+}
+
+.stat-card p {
+    color: #aab7cc;
+    font-size: 13px;
+    margin-bottom: 10px;
+}
+
+.stat-card h2 {
+    color: #00d4ff;
+    font-size: 20px;
+}
+
+.controls {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 10px;
+    margin-bottom: 20px;
+}
+
+.controls button {
+    padding: 15px 5px;
+    border: none;
+    border-radius: 10px;
+    background: #00bce4;
+    color: #07111e;
+    font-weight: bold;
+    font-size: 13px;
+    cursor: pointer;
+}
+
+.controls button:disabled {
+    background: #39485b;
+    color: #aab7cc;
+    cursor: not-allowed;
+}
+
+.map-section,
+.history {
+    background: #121e30;
+    padding: 20px;
+    margin-bottom: 20px;
+    border-radius: 14px;
+    border: 1px solid #263952;
+}
+
+.map-section h2,
+.history h2 {
+    color: #00d4ff;
+    margin-bottom: 15px;
+}
+
+#ride-map {
+    width: 100%;
+    height: 350px;
+    border-radius: 12px;
+    overflow: hidden;
+    z-index: 1;
+}
+
+#map-status {
+    color: #aab7cc;
+    font-size: 13px;
+    margin-top: 12px;
+}
+
+#ride-history {
+    color: #d4deed;
+    font-size: 14px;
+}
+
+footer {
+    text-align: center;
+    padding: 20px;
+    color: #8493a9;
+    font-size: 12px;
+}
+
+@media (max-width: 400px) {
+    .speed-display span {
+        font-size: 60px;
+    }
+
+    .controls button {
+        font-size: 11px;
+        padding: 13px 3px;
+    }
+
+    .stat-card h2 {
+        font-size: 17px;
+    }
+}

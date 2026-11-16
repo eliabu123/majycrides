@@ -1,0 +1,600 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="theme-color" content="#080d18">
+<link rel="manifest" href="./manifest.json">
+<title>MAJYC RIDES PRO</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+
+body {
+    background-color: #05080d;
+    background-image:
+        linear-gradient(rgba(3,8,16,.45), rgba(3,8,16,.65)),
+        url("./background.jpg");
+    background-position: center center;
+    background-size: cover;
+    background-repeat: no-repeat;
+    background-attachment: fixed;
+    color: #fff;
+    font-family: Arial, sans-serif;
+}
+
+#app{max-width:1000px;margin:auto;padding:15px}
+
+header{
+    text-align:center;
+    background:rgba(10,20,34,.82);
+    backdrop-filter:blur(10px);
+    border:1px solid rgba(0,212,255,.28);
+    padding:25px;
+    border-radius:16px;
+    margin-bottom:20px;
+}
+
+header h1{color:#00d4ff;font-size:30px}
+header p{color:#aab7cc;margin-top:8px}
+
+.pro-label{
+    display:inline-block;
+    background:#00d4ff;
+    color:#07111e;
+    padding:6px 15px;
+    border-radius:20px;
+    font-weight:bold;
+    margin-top:12px;
+}
+
+.speed-card{
+    background:linear-gradient(135deg,rgba(16,45,72,.94),rgba(8,18,32,.94));
+    backdrop-filter:blur(8px);
+    border:1px solid #00d4ff;
+    border-radius:18px;
+    text-align:center;
+    padding:30px;
+    margin-bottom:20px;
+}
+
+.speed-card p{color:#00d4ff}
+.speed{font-size:75px;font-weight:bold;margin:15px}
+.speed small{font-size:20px;color:#00d4ff}
+
+.stats{
+    display:grid;
+    grid-template-columns:repeat(2,1fr);
+    gap:12px;
+    margin-bottom:20px;
+}
+
+.stat{
+    background:rgba(18,30,48,.88);
+    backdrop-filter:blur(8px);
+    border:1px solid rgba(70,105,140,.55);
+    padding:20px 10px;
+    border-radius:14px;
+    text-align:center;
+}
+
+.stat p{color:#aab7cc;margin-bottom:10px}
+.stat h2{color:#00d4ff;font-size:20px}
+
+.panel{
+    background:rgba(12,23,38,.90);
+    backdrop-filter:blur(9px);
+    border:1px solid rgba(70,105,140,.55);
+    border-radius:14px;
+    padding:18px;
+    margin-bottom:20px;
+}
+
+h2{color:#00d4ff;margin-bottom:15px}
+
+.controls{
+    display:grid;
+    grid-template-columns:repeat(3,1fr);
+    gap:10px;
+    margin-bottom:20px;
+}
+
+button{
+    padding:15px 5px;
+    border:0;
+    border-radius:10px;
+    background:#00c8ed;
+    color:#07111e;
+    font-weight:bold;
+    cursor:pointer;
+}
+
+button:disabled{
+    background:#39485b;
+    color:#aaa;
+}
+
+#ride-map{
+    height:350px;
+    width:100%;
+    border-radius:12px;
+}
+
+#map-status,#gps-status{
+    color:#aab7cc;
+    margin-top:10px;
+    font-size:13px;
+}
+
+.pro-grid{
+    display:grid;
+    grid-template-columns:repeat(2,1fr);
+    gap:12px;
+}
+
+.pro-card{
+    background:rgba(27,42,64,.88);
+    padding:18px;
+    border-radius:12px;
+}
+
+.pro-card p{
+    color:#aab7cc;
+    font-size:13px;
+    margin-bottom:10px;
+}
+
+.pro-card h3{color:#00d4ff;font-size:23px}
+
+.progress{
+    height:12px;
+    background:#263952;
+    border-radius:20px;
+    overflow:hidden;
+    margin:15px 0;
+}
+
+.progress-fill{
+    height:100%;
+    background:#00d4ff;
+    width:0%;
+    transition:.3s;
+}
+
+.goal-input{
+    width:100%;
+    padding:12px;
+    margin-top:10px;
+    background:#080d18;
+    color:white;
+    border:1px solid #00d4ff;
+    border-radius:8px;
+}
+
+.ride{
+    padding:12px;
+    margin:10px 0;
+    background:rgba(27,42,64,.88);
+    border-radius:9px;
+}
+
+.ride p{
+    margin-top:6px;
+    color:#aab7cc;
+    font-size:13px;
+}
+
+footer{
+    text-align:center;
+    color:#8493a9;
+    padding:20px;
+}
+
+@media(max-width:400px){
+    .speed{font-size:60px}
+    .stat h2{font-size:17px}
+    .pro-grid{grid-template-columns:1fr}
+}
+</style>
+</head>
+
+<body>
+<div id="app">
+
+<header>
+<h1>🚴 MAJYC RIDES</h1>
+<p>Two Riders. One Passion. Every Mile Counts.</p>
+<p>YC &amp; MAJESTY</p>
+<span class="pro-label">PRO CYCLING EXPERIENCE</span>
+</header>
+
+<div class="speed-card">
+<p>LIVE CYCLING SPEED</p>
+<div class="speed"><span id="speed">0</span> <small>km/h</small></div>
+<p id="gps-status">GPS not started</p>
+</div>
+
+<div class="stats">
+<div class="stat"><p>Distance</p><h2 id="distance">0.00 km</h2></div>
+<div class="stat"><p>Average Speed</p><h2 id="average-speed">0 km/h</h2></div>
+<div class="stat"><p>Maximum Speed</p><h2 id="max-speed">0 km/h</h2></div>
+<div class="stat"><p>Ride Duration</p><h2 id="duration">00:00:00</h2></div>
+</div>
+
+<div class="controls">
+<button id="start-btn">START RIDE</button>
+<button id="pause-btn" disabled>PAUSE</button>
+<button id="stop-btn" disabled>STOP RIDE</button>
+</div>
+
+<section class="panel">
+<h2>🏆 Pro Performance Dashboard</h2>
+<div class="pro-grid">
+<div class="pro-card">
+<p>Total Distance</p>
+<h3 id="total-distance">0 km</h3>
+</div>
+<div class="pro-card">
+<p>Completed Rides</p>
+<h3 id="total-rides">0</h3>
+</div>
+<div class="pro-card">
+<p>Total Cycling Time</p>
+<h3 id="total-time">0h</h3>
+</div>
+<div class="pro-card">
+<p>Personal Speed Record</p>
+<h3 id="record-speed">0 km/h</h3>
+</div>
+</div>
+</section>
+
+<section class="panel">
+<h2>🎯 Weekly Cycling Goal</h2>
+<p id="weekly-distance">0 km completed</p>
+<div class="progress">
+<div class="progress-fill" id="goal-progress"></div>
+</div>
+<p id="goal-text">0% completed</p>
+<label for="goal-input">Weekly distance target (km)</label>
+<input class="goal-input" type="number" id="goal-input" min="1" value="50">
+<button id="save-goal" style="width:100%;margin-top:12px">SAVE WEEKLY GOAL</button>
+</section>
+
+<section class="panel">
+<h2>🗺️ Live Cycling Map</h2>
+<div id="ride-map"></div>
+<p id="map-status">Waiting for GPS location...</p>
+</section>
+
+<section class="panel">
+<h2>📊 Cycling History</h2>
+<div id="ride-history">No rides recorded yet.</div>
+</section>
+
+<footer>MAJYC RIDES PRO © 2026 | YC & MAJESTY 🚴</footer>
+</div>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+<script>
+"use strict";
+
+const $ = id => document.getElementById(id);
+
+const map=L.map("ride-map").setView([-1.2864,36.8172],7);
+
+L.tileLayer(
+"https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}",
+{attribution:"Tiles © Esri",maxZoom:19}
+).addTo(map);
+
+let marker=null;
+let routeLine=L.polyline([],{color:"#00d4ff",weight:5}).addTo(map);
+
+let watchId=null;
+let timer=null;
+let running=false;
+let paused=false;
+let sessionActive=false;
+
+let distance=0;
+let maxSpeed=0;
+let speedTotal=0;
+let speedCount=0;
+let elapsed=0;
+let lastPosition=null;
+let lastTime=null;
+let route=[];
+
+function formatTime(seconds){
+    const h=Math.floor(seconds/3600);
+    const m=Math.floor((seconds%3600)/60);
+    const s=Math.floor(seconds%60);
+    return [h,m,s].map(v=>String(v).padStart(2,"0")).join(":");
+}
+
+function calculateDistance(a,b){
+    const R=6371000;
+    const rad=x=>x*Math.PI/180;
+    const dLat=rad(b.lat-a.lat);
+    const dLon=rad(b.lon-a.lon);
+    const x=Math.sin(dLat/2)**2+
+    Math.cos(rad(a.lat))*Math.cos(rad(b.lat))*
+    Math.sin(dLon/2)**2;
+    return R*2*Math.atan2(Math.sqrt(x),Math.sqrt(1-x));
+}
+
+function getHistory(){
+    return JSON.parse(localStorage.getItem("majycrides_history")||"[]");
+}
+
+function updateStats(speed=0){
+    $("speed").textContent=speed.toFixed(1);
+    $("distance").textContent=(distance/1000).toFixed(2)+" km";
+    $("max-speed").textContent=maxSpeed.toFixed(1)+" km/h";
+    $("average-speed").textContent=(speedCount?speedTotal/speedCount:0).toFixed(1)+" km/h";
+    $("duration").textContent=formatTime(elapsed);
+}
+
+function updateMap(lat,lon){
+    const point=[lat,lon];
+
+    if(!marker) marker=L.marker(point).addTo(map);
+    else marker.setLatLng(point);
+
+    routeLine.addLatLng(point);
+    map.setView(point,17);
+    $("map-status").textContent="Your cycling location is updating.";
+}
+
+function stopGPS(){
+    if(watchId!==null){
+        navigator.geolocation.clearWatch(watchId);
+        watchId=null;
+    }
+}
+
+function startClock(){
+    if(timer)clearInterval(timer);
+    timer=setInterval(()=>{
+        elapsed++;
+        $("duration").textContent=formatTime(elapsed);
+    },1000);
+}
+
+function startRide(){
+    if(!navigator.geolocation){
+        alert("GPS not supported.");
+        return;
+    }
+
+    if(!sessionActive){
+        distance=0;
+        maxSpeed=0;
+        speedTotal=0;
+        speedCount=0;
+        elapsed=0;
+        route=[];
+        lastPosition=null;
+        lastTime=null;
+        marker=null;
+        routeLine.setLatLngs([]);
+        sessionActive=true;
+        updateStats();
+    }
+
+    stopGPS();
+    running=true;
+    paused=false;
+
+    $("start-btn").disabled=true;
+    $("start-btn").textContent="RIDE ACTIVE";
+    $("pause-btn").disabled=false;
+    $("stop-btn").disabled=false;
+    $("gps-status").textContent="Searching for GPS...";
+
+    startClock();
+
+    watchId=navigator.geolocation.watchPosition(position=>{
+        if(!running||paused)return;
+
+        const lat=position.coords.latitude;
+        const lon=position.coords.longitude;
+        const accuracy=position.coords.accuracy;
+
+        if(accuracy>50){
+            $("gps-status").textContent="GPS accuracy low. Waiting...";
+            return;
+        }
+
+        const current={lat,lon};
+        const now=Date.now();
+        let speed=0;
+
+        if(lastPosition&&lastTime){
+            const moved=calculateDistance(lastPosition,current);
+            const seconds=(now-lastTime)/1000;
+
+            if(moved>1&&moved<500&&seconds>0){
+                distance+=moved;
+                speed=(moved/seconds)*3.6;
+                if(speed>100)speed=0;
+
+                if(speed>0){
+                    maxSpeed=Math.max(maxSpeed,speed);
+                    speedTotal+=speed;
+                    speedCount++;
+                }
+            }
+        }
+
+        lastPosition=current;
+        lastTime=now;
+        route.push([lat,lon]);
+
+        updateMap(lat,lon);
+        updateStats(speed);
+        $("gps-status").textContent="GPS connected";
+    },error=>{
+        $("gps-status").textContent="GPS error: "+error.message;
+    },{
+        enableHighAccuracy:true,
+        maximumAge:1000,
+        timeout:20000
+    });
+}
+
+function pauseRide(){
+    if(!running)return;
+
+    running=false;
+    paused=true;
+    stopGPS();
+
+    if(timer){
+        clearInterval(timer);
+        timer=null;
+    }
+
+    $("start-btn").disabled=false;
+    $("start-btn").textContent="RESUME RIDE";
+    $("pause-btn").disabled=true;
+    $("gps-status").textContent="Ride paused";
+}
+
+function stopRide(){
+    if(!sessionActive)return;
+
+    running=false;
+    paused=false;
+    stopGPS();
+
+    if(timer){
+        clearInterval(timer);
+        timer=null;
+    }
+
+    const history=getHistory();
+
+    if(distance>0){
+        history.unshift({
+            id:Date.now(),
+            distance:(distance/1000).toFixed(2),
+            duration:formatTime(elapsed),
+            seconds:elapsed,
+            maxSpeed:maxSpeed.toFixed(1),
+            date:new Date().toLocaleString(),
+            timestamp:Date.now(),
+            route:route
+        });
+
+        localStorage.setItem("majycrides_history",JSON.stringify(history));
+    }
+
+    sessionActive=false;
+
+    $("start-btn").disabled=false;
+    $("start-btn").textContent="START RIDE";
+    $("pause-btn").disabled=true;
+    $("stop-btn").disabled=true;
+    $("gps-status").textContent="Ride stopped";
+
+    lastPosition=null;
+    lastTime=null;
+
+    showHistory();
+    updateProDashboard();
+}
+
+function updateProDashboard(){
+    const history=getHistory();
+
+    let totalDistance=0;
+    let totalSeconds=0;
+    let record=0;
+    let weeklyDistance=0;
+
+    const weekStart=new Date();
+    const day=weekStart.getDay();
+    weekStart.setDate(weekStart.getDate()-(day===0?6:day-1));
+    weekStart.setHours(0,0,0,0);
+
+    history.forEach(ride=>{
+        totalDistance+=Number(ride.distance)||0;
+        totalSeconds+=Number(ride.seconds)||0;
+        record=Math.max(record,Number(ride.maxSpeed)||0);
+
+        if(ride.timestamp>=weekStart.getTime()){
+            weeklyDistance+=Number(ride.distance)||0;
+        }
+    });
+
+    $("total-distance").textContent=totalDistance.toFixed(2)+" km";
+    $("total-rides").textContent=history.length;
+    $("total-time").textContent=(totalSeconds/3600).toFixed(1)+"h";
+    $("record-speed").textContent=record.toFixed(1)+" km/h";
+
+    const goal=Math.max(1,Number(localStorage.getItem("majycrides_goal")||50));
+    const percent=Math.min(100,(weeklyDistance/goal)*100);
+
+    $("weekly-distance").textContent=weeklyDistance.toFixed(2)+" km completed";
+    $("goal-progress").style.width=percent+"%";
+    $("goal-text").textContent=percent.toFixed(0)+"% completed";
+    $("goal-input").value=goal;
+}
+
+function showHistory(){
+    const history=getHistory();
+
+    if(!history.length){
+        $("ride-history").textContent="No rides recorded yet.";
+        return;
+    }
+
+    $("ride-history").innerHTML=history.map(ride=>`
+        <div class="ride">
+            <strong>${ride.distance} km</strong>
+            <p>Duration: ${ride.duration}</p>
+            <p>Maximum speed: ${ride.maxSpeed} km/h</p>
+            <p>${ride.date}</p>
+        </div>
+    `).join("");
+}
+
+$("start-btn").addEventListener("click",startRide);
+$("pause-btn").addEventListener("click",pauseRide);
+$("stop-btn").addEventListener("click",stopRide);
+
+$("save-goal").addEventListener("click",()=>{
+    const goal=Number($("goal-input").value);
+
+    if(!Number.isFinite(goal)||goal<=0){
+        alert("Enter a valid weekly goal.");
+        return;
+    }
+
+    localStorage.setItem("majycrides_goal",goal);
+    updateProDashboard();
+    alert("Weekly goal saved!");
+});
+
+showHistory();
+updateStats();
+updateProDashboard();
+</script>
+
+<script>
+if ("serviceWorker" in navigator) {
+    window.addEventListener("load", () => {
+        navigator.serviceWorker.register("./service-worker.js")
+            .then(() => console.log("MAJYC RIDES offline system activated!"))
+            .catch(error => console.error("Service worker error:", error));
+    });
+}
+</script>
+
+</body>
+</html>

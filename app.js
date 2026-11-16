@@ -26,9 +26,40 @@ let lastPosition = null;
 let lastSpeedTime = null;
 let routePoints = [];
 
-let rideHistory = JSON.parse(
-    localStorage.getItem("majycrides_history") || "[]"
-);
+const HISTORY_KEY = "majycrides_history";
+const ACTIVE_RIDE_KEY = "majycrides_active_ride";
+const MAX_HISTORY = 50;
+const MAX_ROUTE_POINTS = 1200;
+
+function readJSON(key, fallback) {
+    try {
+        const value = localStorage.getItem(key);
+        return value ? JSON.parse(value) : fallback;
+    } catch (error) {
+        console.warn("Could not read saved data:", error);
+        return fallback;
+    }
+}
+
+function saveJSON(key, value) {
+    try {
+        localStorage.setItem(key, JSON.stringify(value));
+        return true;
+    } catch (error) {
+        console.error("Could not save ride data:", error);
+        const status = $("map-status");
+        if (status) {
+            status.textContent =
+                "Storage is full. Some ride data could not be saved.";
+        }
+        return false;
+    }
+}
+
+let rideHistory = readJSON(HISTORY_KEY, []);
+if (!Array.isArray(rideHistory)) rideHistory = [];
+
+let restoredRide = readJSON(ACTIVE_RIDE_KEY, null);
 
 // ======================================
 // MAP INITIALIZATION
@@ -44,12 +75,12 @@ function initializeMap() {
     map = L.map("ride-map").setView([-1.2864, 36.8172], 7);
 
     L.tileLayer(
-    "https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}",
-    {
-        attribution: "Tiles © Esri",
-        maxZoom: 19
-    }
-).addTo(map);
+        "https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}",
+        {
+            attribution: "Tiles © Esri",
+            maxZoom: 19
+        }
+    ).addTo(map);
 
     rideLine = L.polyline([], {
         color: "#00d4ff",
@@ -75,15 +106,15 @@ function formatDuration(seconds) {
 }
 
 function getElapsedSeconds() {
-    if (!rideStartTime) return 0;
+    if (!rideStartTime && !ridePaused) return 0;
 
     let elapsed = pausedDuration;
 
-    if (!ridePaused) {
+    if (!ridePaused && rideStartTime) {
         elapsed += (Date.now() - rideStartTime) / 1000;
     }
 
-    return elapsed;
+    return Math.max(0, elapsed);
 }
 
 // ======================================
@@ -140,8 +171,7 @@ function updateDashboard() {
 // ======================================
 
 function updateMap(lat, lon) {
-    map.setView([lat, lon], 17);
-    if (!map) return;
+    if (!map || !rideLine) return;
 
     const position = [lat, lon];
 
@@ -153,10 +183,16 @@ function updateMap(lat, lon) {
         riderMarker.setLatLng(position);
     }
 
-    routePoints.push(position);
+    if (routePoints.length < MAX_ROUTE_POINTS) {
+        routePoints.push(position);
+    } else if (routePoints.length % 2 === 0) {
+        routePoints = routePoints.filter(
+            (point, index) => index % 2 === 0
+        );
+        routePoints.push(position);
+    }
 
     rideLine.setLatLngs(routePoints);
-
     map.setView(position, 17);
 
     $("map-status").textContent =
@@ -172,7 +208,8 @@ function startTimer() {
 
     timerId = setInterval(() => {
         updateDashboard();
-    }, 1000);
+        saveActiveRide();
+    }, 5000);
 }
 
 // ======================================
@@ -211,10 +248,7 @@ function startGPS() {
                     lon
                 );
 
-                if (
-                    distance < 500 &&
-                    distance > 1
-                ) {
+                if (distance < 500 && distance > 1) {
                     totalDistance += distance;
                 }
             }
@@ -252,6 +286,7 @@ function startGPS() {
                 Math.round(coords.accuracy) + "m";
 
             updateDashboard();
+            saveActiveRide();
         },
 
         error => {
@@ -287,6 +322,60 @@ function stopGPS() {
 }
 
 // ======================================
+// AUTOMATIC ACTIVE RIDE BACKUP
+// ======================================
+
+function saveActiveRide() {
+    if (!rideActive) return;
+
+    saveJSON(ACTIVE_RIDE_KEY, {
+        savedAt: Date.now(),
+        elapsed: getElapsedSeconds(),
+        distance: totalDistance,
+        maximumSpeed: maximumSpeed,
+        route: routePoints,
+        active: true
+    });
+}
+
+// ======================================
+// RESTORE PREVIOUS RIDE
+// ======================================
+
+function restoreActiveRide() {
+    if (!restoredRide || !restoredRide.active) return;
+
+    rideActive = true;
+    ridePaused = true;
+    rideStartTime = 0;
+
+    pausedDuration = Number(restoredRide.elapsed) || 0;
+    totalDistance = Number(restoredRide.distance) || 0;
+    maximumSpeed = Number(restoredRide.maximumSpeed) || 0;
+
+    routePoints = Array.isArray(restoredRide.route)
+        ? restoredRide.route.slice(-MAX_ROUTE_POINTS)
+        : [];
+
+    currentSpeed = 0;
+    lastPosition = null;
+    lastSpeedTime = null;
+
+    $("start-btn").disabled = false;
+    $("start-btn").textContent = "RESUME RIDE";
+    $("pause-btn").disabled = true;
+    $("stop-btn").disabled = false;
+
+    $("gps-status").textContent =
+        "Previous ride recovered • Paused";
+
+    $("map-status").textContent =
+        "Your unfinished ride was recovered. Press RESUME RIDE to continue.";
+
+    updateDashboard();
+}
+
+// ======================================
 // START RIDE
 // ======================================
 
@@ -307,6 +396,7 @@ function startRide() {
         routePoints = [];
 
         if (rideLine) rideLine.setLatLngs([]);
+
         if (riderMarker && map) {
             map.removeLayer(riderMarker);
             riderMarker = null;
@@ -315,6 +405,8 @@ function startRide() {
         rideStartTime = Date.now();
         ridePaused = false;
     }
+
+    saveActiveRide();
 
     $("start-btn").disabled = true;
     $("start-btn").textContent = "START RIDE";
@@ -332,7 +424,8 @@ function startRide() {
 function pauseRide() {
     if (!rideActive || ridePaused) return;
 
-    pausedDuration += Date.now() - rideStartTime;
+    pausedDuration += (Date.now() - rideStartTime) / 1000;
+    rideStartTime = 0;
     ridePaused = true;
 
     stopGPS();
@@ -343,6 +436,7 @@ function pauseRide() {
     $("pause-btn").disabled = true;
 
     updateDashboard();
+    saveActiveRide();
 }
 
 // ======================================
@@ -371,11 +465,9 @@ function stopRide() {
         };
 
         rideHistory.unshift(ride);
+        rideHistory = rideHistory.slice(0, MAX_HISTORY);
 
-        localStorage.setItem(
-            "majycrides_history",
-            JSON.stringify(rideHistory)
-        );
+        saveJSON(HISTORY_KEY, rideHistory);
     }
 
     rideActive = false;
@@ -387,6 +479,12 @@ function stopRide() {
     maximumSpeed = 0;
 
     routePoints = [];
+
+    try {
+        localStorage.removeItem(ACTIVE_RIDE_KEY);
+    } catch (error) {
+        console.warn("Could not clear active ride:", error);
+    }
 
     $("start-btn").disabled = false;
     $("start-btn").textContent = "START RIDE";
@@ -450,7 +548,15 @@ function showSavedRoute(id) {
     const points = ride.route.map(point => [
         Number(point[0]),
         Number(point[1])
-    ]);
+    ]).filter(point =>
+        Number.isFinite(point[0]) && Number.isFinite(point[1])
+    );
+
+    if (!points.length) {
+        $("map-status").textContent =
+            "No valid GPS points in this route.";
+        return;
+    }
 
     if (rideLine) rideLine.setLatLngs(points);
 
@@ -481,18 +587,23 @@ $("stop-btn").addEventListener("click", stopRide);
 $("pause-btn").disabled = true;
 $("stop-btn").disabled = true;
 
+restoreActiveRide();
 renderHistory();
 updateDashboard();
 initializeMap();
-// REGISTER SERVICE WORKER
-if ("serviceWorker" in navigator) {
-    window.addEventListener("load", () => {
-        navigator.serviceWorker.register("./service-worker.js")
-            .then(() => {
-                console.log("MAJYC RIDES offline support activated.");
-            })
-            .catch(error => {
-                console.error("Service worker registration failed:", error);
-            });
-    });
+
+if (rideActive && routePoints.length && rideLine && map) {
+    rideLine.setLatLngs(routePoints);
+    map.fitBounds(routePoints, { padding: [30, 30] });
 }
+
+// Save when the page is refreshed or hidden.
+window.addEventListener("pagehide", saveActiveRide);
+
+document.addEventListener("visibilitychange", () => {
+    if (document.visibilityState === "hidden") {
+        saveActiveRide();
+    }
+});
+
+// REGISTER SERVICE WORKER
